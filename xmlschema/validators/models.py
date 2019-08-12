@@ -489,35 +489,39 @@ class ModelVisitor(MutableSequence):
             consumable_content = {k: iter(v) for k, v in consumable_content.items()}
 
         if cdata_content:
-            yield cdata_content.pop()
+            content = cdata_content.pop()
+            yield content[0], content[1], None
 
         while self.element is not None and consumable_content:
             for name in consumable_content:
                 if self.element.is_matching(name):
                     try:
-                        yield name, next(consumable_content[name])
+                        yield name, next(consumable_content[name]), None
                     except StopIteration:
                         del consumable_content[name]
-                        for _ in self.advance(False):
-                            pass
+                        for error in self.advance(False):
+                            yield None, None, error
                     else:
                         if cdata_content:
-                            yield cdata_content.pop()
+                            content = cdata_content.pop()
+                            yield content[0], content[1], None
                     break
             else:
                 # Consume the return of advance otherwise we get stuck in an infinite loop.
-                for _ in self.advance(False):
-                    pass
+                for error in self.advance(False):
+                    yield None, None, error
 
         # Add the remaining consumable content onto the end of the data.
         for name, values in consumable_content.items():
             for v in values:
-                yield name, v
+                yield name, v, None
                 if cdata_content:
-                    yield cdata_content.pop()
+                    content = cdata_content.pop()
+                    yield content[0], content[1], None
 
         while cdata_content:
-            yield cdata_content.pop()
+            content = cdata_content.pop()
+            yield content[0], content[1], None
 
     def iter_collapsed_content(self, content):
         """
@@ -538,19 +542,19 @@ class ModelVisitor(MutableSequence):
         unordered_content = defaultdict(deque)
         for name, value in content:
             if isinstance(name, int) or self.element is None:
-                yield name, value
+                yield name, value, None
             elif prev_name != name:
-                yield name, value
+                yield name, value, None
                 prev_name = name
             elif self.element.is_matching(name):
-                yield name, value
+                yield name, value, None
             else:
                 unordered_content[name].append(value)
                 while self.element is not None and unordered_content:
                     for key in unordered_content:
                         if self.element.is_matching(key):
                             try:
-                                yield name, unordered_content[key].popleft()
+                                yield name, unordered_content[key].popleft(), None
                             except IndexError:
                                 del unordered_content[key]
                             break
@@ -560,4 +564,4 @@ class ModelVisitor(MutableSequence):
         # Add the remaining consumable content onto the end of the data.
         for name, values in unordered_content.items():
             for v in values:
-                yield name, v
+                yield name, v, None

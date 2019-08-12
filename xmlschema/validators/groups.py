@@ -634,11 +634,16 @@ class XsdGroup(XsdComponent, ModelGroup, ValidationMixin):
         if isinstance(element_data.content, dict) or kwargs.get('unordered'):
             content = model.iter_unordered_content(element_data.content)
         elif converter.losslessly:
-            content = element_data.content
+            content = ((name, value, None) for name, value in element_data.content)
         else:
             content = model.iter_collapsed_content(element_data.content)
 
-        for index, (name, value) in enumerate(content):
+        for index, (name, value, error) in enumerate(content):
+            if error is not None:
+                particle, occurs, expected = error
+                errors.append((index - cdata_index, particle, occurs, expected))
+                continue
+
             if isinstance(name, int):
                 if not children:
                     text = padding + value if text is None else text + value + padding
