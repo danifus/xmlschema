@@ -591,6 +591,38 @@ class TestDecoding(XsdValidatorTestCase):
         self.assertEqual(xs.to_dict("""<foo>bar</foo>""",
                                     path='/foo', namespaces={'': 'http://example.com/foo'}), None)
 
+    def test_non_global_schema_path(self):
+        xs = xmlschema.XMLSchema("""<?xml version="1.0" encoding="UTF-8"?>
+        <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:foo="http://example.com/foo" targetNamespace="http://example.com/foo">
+            <xs:complexType name="type1">
+                <xs:sequence>
+                    <xs:element name="sub_part1" type="xs:string" />
+                </xs:sequence>
+            </xs:complexType>
+            <xs:complexType name="type2">
+                <xs:sequence>
+                    <xs:element name="sub_part2" type="xs:string" />
+                </xs:sequence>
+            </xs:complexType>
+            <xs:element name="foo">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="part1" type="foo:type1" />
+                        <xs:element name="part2" type="foo:type2" />
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+        </xs:schema>""")
+        self.assertEqual(
+            xs.to_dict(
+                """<part1 xmlns:foo="http://example.com/foo">
+                    <sub_part1>test</sub_part1>
+                </part1>""",
+                schema_path='.//part1',
+            ),
+            {"sub_part1": "test"}
+        )
+
     def test_complex_with_simple_content_restriction(self):
         xs = self.schema_class(self.casepath('features/derivations/complex-with-simple-content-restriction.xsd'))
         self.assertTrue(xs.is_valid('<value>10</value>'))
